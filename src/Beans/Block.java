@@ -1,7 +1,8 @@
 package Beans;
 
-import Tools.Sha256;
+import Tools.StringUtil;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Objects;
 
@@ -15,18 +16,33 @@ public class Block {
      *  nonce       随机数
      *  transactions    当前区块保存的数据
      */
-    private Date timestamp;
+    private long timestamp;
     private String pre_hash;
     private String hashCode;
     private long nonce;
-    private String transactions;
-    private int preZeros;
+    private Transaction transactions;
 
     // 主函数，用于功能测试
     public static void main(String[] args) {
-        Date date = new Date();
+        long date = new Date().getTime();
         System.out.println(date);
 
+    }
+
+    public String calculate_hash_out(){
+        //  将区块信息拼接后得到区块的hash值
+        //  raw_str = self.previous_hash + str(self.timestamp) + json.dumps(self.transactions, ensure_ascii=False, cls=TransactionEncoder) + str(self.nonce)
+        String strTemp = "";
+        String hashCode;
+        int i = 0;
+        strTemp = this.pre_hash + String.valueOf(this.timestamp) + this.transactions.toString() + String.valueOf(this.nonce);
+        hashCode = StringUtil.applySha256(strTemp);
+        for(i = 0;i < hashCode.length();i++){
+            if (hashCode.charAt(i) != '0'){
+                break;
+            }
+        }
+        return hashCode;
     }
 
     private void calculate_hash(){
@@ -35,18 +51,17 @@ public class Block {
         String strTemp = "";
         String hashCode;
         int i = 0;
-        strTemp = this.pre_hash + this.timestamp + this.transactions + String.valueOf(this.nonce);
-        hashCode = Sha256.getSHA256StrJava(strTemp);
+        strTemp = this.pre_hash + String.valueOf(this.timestamp) + this.transactions.toString() + String.valueOf(this.nonce);
+        hashCode = StringUtil.applySha256(strTemp);
         for(i = 0;i < hashCode.length();i++){
             if (hashCode.charAt(i) != '0'){
                 break;
             }
         }
-        this.preZeros = i;
-        this.hashCode = hashCode;
+        this.hashCode =  hashCode;
     }
 
-    public Block(Date timestamp, String pre_hash, String transactions) {
+    public Block(long timestamp, String pre_hash, Transaction transactions ) {
         this.timestamp = timestamp;
         this.pre_hash = pre_hash;
         this.transactions = transactions;
@@ -54,20 +69,34 @@ public class Block {
         this.calculate_hash();
     }
 
-    public void mineBlock(int diff){
-        // diff 挖矿难度
-        while(this.preZeros < diff){
-            this.nonce ++;
-            this.calculate_hash();
-        }
+    public Block(Date timestamp, String pre_hash, Transaction transactions) {
+        this.timestamp = timestamp.getTime();
+        this.pre_hash = pre_hash;
+        this.transactions = transactions;
+        this.nonce = 0;
+        this.calculate_hash();
     }
 
-    public Date getTimestamp() {
+    //  挖矿
+    public void mineBlock(int diff){
+        // diff 挖矿难度
+        String target = new String(new char[diff]).replace('\0', '0'); //Create a string with difficulty * "0"
+        while(!this.hashCode.substring( 0, diff).equals(target)) {
+            nonce ++;
+            this.calculate_hash();
+        }
+        System.out.println("Block Mined!!! : " + this.hashCode);
+    }
+
+    public long getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(Date timestamp) {
+    public void setTimestamp(long timestamp) {
         this.timestamp = timestamp;
+    }
+    public void setTimestamp(Date timestamp) {
+        this.timestamp = timestamp.getTime();
     }
 
     public String getPre_hash() {
@@ -94,16 +123,12 @@ public class Block {
         this.nonce = nonce;
     }
 
-    public String getTransactions() {
+    public Transaction getTransactions() {
         return transactions;
     }
 
-    public void setTransactions(String transactions) {
+    public void setTransactions(Transaction transactions) {
         this.transactions = transactions;
-    }
-
-    public int getPreZeros() {
-        return preZeros;
     }
 
     @Override
@@ -113,7 +138,7 @@ public class Block {
                 ", pre_hash='" + pre_hash + '\'' +
                 ", hashCode='" + hashCode + '\'' +
                 ", nonce=" + nonce +
-                ", transactions='" + transactions + '\'' +
+                ", transactions='" + transactions.toString() + '\'' +
                 '}';
     }
 
